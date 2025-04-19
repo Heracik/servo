@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Odoslať čas na MQTT</title>
+    <link rel="stylesheet" href="{% static 'mqtt_subscriber/home.css' %}">
+    <script>
+        function openCityModal() {
+            document.getElementById("cityModal").style.display = "block";
+        }
+    
+        function openTimeModal() {
+            document.getElementById("timeModal").style.display = "block";
+        }
+    
+        function closeModal() {
+            document.getElementById("cityModal").style.display = "none";
+            document.getElementById("timeModal").style.display = "none";
+        }
+    
+        function sendTimeForCity(city) {
+    console.log(`Odosielam čas pre mesto: ${city}`);  // Tento log by mal ukázať, že sa funkcia zavolala
+    fetch(`/send_time/${city}/`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Odpoveď zo servera:', data);  // Skontroluj odpoveď z backendu
+            alert(data.message);
+            closeModal();
+        })
+        .catch(error => {
+            console.error('Chyba pri odosielaní:', error);
+            alert('Nastala chyba pri odosielaní času.');
+            closeModal();
+        });
+}
+
+    
+        function sendCustomTime() {
+            const customTime = document.getElementById("customTime").value;
+    
+            if (!customTime) {
+                alert('Prosím zadajte čas.');
+                return;
+            }
+    
+            fetch(`/send_custom_time/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ time: customTime })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                closeModal();
+            })
+            .catch(error => {
+                console.error('Chyba:', error);
+                alert('Nastala chyba pri odosielaní vlastného času.');
+                closeModal();
+            });
+        }
+    </script>
+</head>
+<body>
+    <div class="background-container"></div>
+    <h1 class="servo-hodiny">
+        <span class="servo">Servo</span>
+        <span class="hodiny">Hodiny</span>
+    </h1>
+
+    <button onclick="openCityModal()">Synchronizovať podľa mesta</button>
+    <button onclick="openTimeModal()">Nastaviť vlastný čas</button>
+
+    <div id="cityModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Vyberte mesto:</h2>
+            <div class="city-list">
+                {% for city, timezone in cities_timezones.items %}
+                    <button onclick="sendTimeForCity('{{ city|lower }}')">{{ city }} ({{ timezone }})</button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div id="timeModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Zadajte vlastný čas:</h2>
+            <input type="time" id="customTime">
+            <button onclick="sendCustomTime()">Odoslať vlastný čas</button>
+        </div>
+    </div>
+
+    <button id="shutdownBtn">Vypnúť</button>
+
+    <script>
+        document.getElementById("shutdownBtn").addEventListener("click", function() {
+            fetch("/send_shutdown/", { method: "POST" })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                })
+                .catch(error => {
+                    console.error('Chyba:', error);
+                    alert('Nastala chyba pri odosielaní príkazu na vypnutie.');
+                });
+        });
+    </script>
+</body>
+</html>
